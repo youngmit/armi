@@ -17,6 +17,7 @@ Deals with elements of the periodic table.
 """
 
 import os
+from typing import List
 
 from armi import context
 from armi.utils.units import HEAVY_METAL_CUTOFF_Z
@@ -46,7 +47,7 @@ LANTHANIDE_ELEMENTS = [
 GASEOUS_ELEMENTS = ["XE", "KR"]
 
 
-class Element(object):
+class Element:
     r"""
     Represents an element, defined by its atomic number.
 
@@ -300,3 +301,4 @@ def factory():
 
 
 factory()
+
