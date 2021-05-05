@@ -487,28 +487,14 @@ def _addNuclideToIndices(nuc):
     mc3 = nuc.getMcc3Id()
     if mc3:
         byMccId[mc3] = nuc
-    if isinstance(nuc, IMcnpNuclide):
-        byMcnpId[nuc.getMcnpId()] = nuc
-        try:
-            byAAAZZZSId[nuc.getAAAZZZSId()] = nuc
-        except AttributeError:
-            pass
 
-
-class IMcnpNuclide(object):
-    """Interface which defines the contract for getMcnpId."""
-
-    def getMcnpId(self):
-        """
-        Abstract implementation of get MCNP ID.
-        """
-        raise NotImplementedError
-
-    def getAAAZZZSId(self):
-        """
-        Abstract implementation of get AAAZZZS ID (used in cinder, etc).
-        """
-        raise NotImplementedError
+    mcnp = nuc.getMcnpId()
+    if mcnp is not None:
+        byMcnpId[mcnp] = nuc
+    try:
+        byAAAZZZSId[nuc.getAAAZZZSId()] = nuc
+    except AttributeError:
+        pass
 
 
 class Auto:
@@ -716,20 +702,6 @@ class Nuclide:
         """Get the name of the nuclide used in the database (i.e. "nPu239")"""
         return "n{}".format(self.name.capitalize())
 
-    def getMcc3Id(self):
-        r"""Gets the MC**2-v3 nuclide ID.
-
-        Abstract method, see concrete types for implementation.
-
-        See Also
-        --------
-        :meth:`NuclideBase.getMcc3Id`
-        :meth:`NaturalNuclideBase.getMcc3Id`
-        :meth:`LumpNuclideBase.getMcc3Id`
-        :meth:`DummyNuclideBase.getMcc3Id`
-        """
-        raise NotImplementedError
-
     def isHeavyMetal(self):
         return self.z > HEAVY_METAL_CUTOFF_Z
 
@@ -793,7 +765,7 @@ class Nuclide:
             base = "{}{}".format(self.element.symbol, self.a)
         return "{:_<5}7".format(base)
 
-    def getMcnpId(self):
+    def getMcnpId(self) -> Optional[str]:
         """
         Gets the MCNP label for this nuclide
 
@@ -934,6 +906,9 @@ class DummyNuclideBase(Nuclide):
         """
         return "DUMMY"
 
+    def getMcnpId(self):
+        return None
+
 
 class LumpNuclideBase(Nuclide):
     """
@@ -985,7 +960,7 @@ class LumpNuclideBase(Nuclide):
         return self.mc2id
 
 
-class NaturalNuclideBase(Nuclide, IMcnpNuclide):
+class NaturalNuclideBase(Nuclide):
     def __init__(self, name, element, mc2id):
         self.element = element
         Nuclide.__init__(
@@ -1035,16 +1010,6 @@ class NaturalNuclideBase(Nuclide, IMcnpNuclide):
         :meth:`Nuclide.getMcc3Id`
         """
         return "{:_<5}7".format(self.element.symbol)
-
-    def getMcnpId(self):
-        """Gets the MCNP ID for this element.
-
-        Returns
-        -------
-        id : str
-            The MCNP ID e.g. ``1000``, ``92000``. Not zero-padded on the left.
-        """
-        return "{0:d}000".format(self.z)
 
     def getAAAZZZSId(self):
         """Gets the AAAZZZS ID for a few elements.

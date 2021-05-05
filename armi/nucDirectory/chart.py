@@ -15,10 +15,14 @@
 """
 Implementation of a chart of the nuclides class.
 """
-from collections.abc import Iterable
+from typing import List
 import pathlib
 
 from armi import context
+from armi.nucDirectory import elements
+from armi.nucDirectory import nuclideBases
+from armi.utils.units import HEAVY_METAL_CUTOFF_Z
+
 
 class Element:
     r"""
@@ -35,8 +39,8 @@ class Element:
     name : str
         element name
 
-    isotopes : list of Nuclide objects
-        The represented isotopes of the element
+    nuclideBases : list of nuclideBases
+        nuclideBases for this element
     """
 
     def __init__(self, z, symbol, name):
@@ -59,12 +63,7 @@ class Element:
         self.symbol = symbol
         self.name = name
         self.standardWeight = None
-        self.isotopes = []
-
-        if other is not None and other == self:
-            raise Exception(
-                "Element with atomic weight {} already exists".format(self)
-            )
+        self.nuclideBases = []
 
     def __repr__(self):
         return "<Element {} {}>".format(self.symbol, self.z)
@@ -80,11 +79,11 @@ class Element:
         return hash(self.name)
 
     def __iter__(self):
-        for nuc in self.isotopes:
+        for nuc in self.nuclideBases:
             yield nuc
 
     def append(self, nuclide):
-        self.isotopes.append(nuclide)
+        self.nuclideBases.append(nuclide)
 
     def isNaturallyOccurring(self):
         r"""
@@ -92,7 +91,7 @@ class Element:
         If any isotopes are naturally occurring the total abundance will be >0 so it will return True
         """
         totalAbundance = 0.0
-        for nuc in self.isotopes:
+        for nuc in self.nuclideBases:
             totalAbundance += nuc.abundance
         return totalAbundance > 0.0
 
@@ -106,10 +105,11 @@ class Element:
         allow this method to be used in loops it will simply return an
         empty list in these situations.
         """
-        return [nuc for nuc in self.isotopes if nuc.abundance > 0.0 and nuc.a > 0]
+        return [nuc for nuc in self.nuclideBases if nuc.abundance > 0.0 and nuc.a > 0]
 
     def isHeavyMetal(self):
         return self.z > HEAVY_METAL_CUTOFF_Z
+
 
 class ChartOfTheNuclides:
     """
@@ -132,9 +132,12 @@ class ChartOfTheNuclides:
     nuclides altogether).
     """
 
-    def __init__(self, nuclides: Iterable[Nuclide]):
+    def __init__(self, nuclides: List[nuclideBases.Nuclide]):
         self.nuclides = []
         self.elements = []
+
+        # element collections
+        self.byZ
 
         with open(pathlib.Path(context.RES) / "elements.dat", "r") as f:
             for line in f:
@@ -145,4 +148,12 @@ class ChartOfTheNuclides:
                 name = lineData[2].lower()
                 self.elements.append(Element(z, sym, name))
 
+        for nuclide in nuclides:
+            self.nuclides.append(nuclide)
+
+    def _buildElements(self):
+        for element in self.elements:
+            self
+
+    def 
 

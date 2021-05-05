@@ -22,9 +22,6 @@ from typing import List
 from armi import context
 from armi.utils.units import HEAVY_METAL_CUTOFF_Z
 
-byZ = {}
-byName = {}
-bySymbol = {}
 
 LANTHANIDE_ELEMENTS = [
     "LA",
@@ -143,90 +140,52 @@ class Element:
         return self.z > HEAVY_METAL_CUTOFF_Z
 
 
-def getName(z=None, symbol=None):
-    r"""
-    Returns element name
+class Elements:
+    def __init__(self):
+        self.byZ = dict()
+        self.byName = dict()
+        self.bySymbol = dict()
+        self._elements = []
 
-    Parameters
-    ----------
-    z : int
-        Atomic number
-    symbol : str
-        Element abbreviation e.g. 'Zr'
+    @staticmethod
+    def fromData(src: Optional[os.PathLike]=None):
+        if src is None:
+            src = os.path.join(context.RES, "elements.dat")
 
-    Examples
-    --------
-    >>> elements.getName(10)
-    'Neon'
-    >>> elements.getName(symbol='Ne')
-    'Neon'
+        with open(src, "r") as f:
+            for line in f:
+                # read z, symbol, and name
+                lineData = line.split()
+                z = int(lineData[0])
+                sym = lineData[1].upper()
+                name = lineData[2].lower()
+                Element(z, sym, name)
 
-    """
-    element = None
-    if z:
-        element = byZ[z]
-    else:
-        element = byName[symbol.upper()]
-    return element.name
+    def add(self, element: Element):
+        self._elements.append(element)
+        self.byZ[element.z] = element
+        self.byName[element.name] = element
+        self.bySymbol[element.symbol] = element
 
+    def update(self, elements: List[Element]):
+        for element in elements:
+            self.add(element)
 
-def getSymbol(z=None, name=None):
-    r"""
-    Returns element abbreviation given atomic number Z
-
-    Parameters
-    ----------
-    z : int
-        Atomic number
-    name : str
-        Element name E.g. Zirconium
-
-    Examples
-    --------
-    >>> elements.getSymbol(10)
-    'Ne'
-    >>> elements.getSymbol(name='Neon')
-    'Ne'
-
-    """
-    element = None
-    if z:
-        element = byZ[z]
-    else:
-        element = byName[name.lower()]
-    return element.symbol
+    def setIsotopics(self, nuclides):
+        for nuc in nuclides:
 
 
-def getElementZ(symbol=None, name=None):
-    """
-    Get element atomic number given a symbol or name.
+    def clear():
+        self.byZ.clear()
+        self.byName.clear()
+        self.bySymbol.clear()
+        self._elements = []
 
-    Parameters
-    ----------
-    symbol : str
-        Element symbol e.g. 'Zr'
-    name : str
-        Element name e.g. 'Zirconium'
 
-    Examples
-    --------
-    >>> elements.getZ('Zr')
-    40
-    >>> elements.getZ(name='Zirconium')
-    40
-
-    Notes
-    -----
-    Element Z is stored in elementZBySymbol, indexed by upper-case element symbol.
-    """
-    if not symbol and not name:
-        return None
-    element = None
-    if symbol:
-        element = bySymbol[symbol.upper()]
-    else:
-        element = byName[name.lower()]
-    return element.z
+_elements = Elements()
+byZ = _elements.byZ
+byName = _elements.byName
+bySymbol = _elements.bySymbol
 
 
 def clearNuclideBases():
@@ -245,9 +204,7 @@ nuclideRenormalization = None
 
 def destroy():
     """Delete all elements."""
-    byZ.clear()
-    byName.clear()
-    bySymbol.clear()
+    _elements.clear()
 
 
 def deriveNaturalWeights():
