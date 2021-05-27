@@ -934,7 +934,7 @@ class ArmiObject(metaclass=CompositeModelType):
                 # has no natural isotopics!
                 nucs = [
                     nb.name
-                    for nb in elements.bySymbol[nucName].nuclideBases
+                    for nb in elements.bySymbol[nucName].isotopes
                     if not isinstance(nb, nuclideBases.NaturalNuclideBase)
                 ]
                 convertedNucNames.extend(nucs)
@@ -1713,7 +1713,7 @@ class ArmiObject(metaclass=CompositeModelType):
 
     def getPuN(self):
         """Returns total number density of Pu isotopes"""
-        nucNames = [nuc.name for nuc in elements.byZ[94].nuclideBases]
+        nucNames = [nuc.name for nuc in elements.byZ[94].isotopes]
         return sum(self.getNuclideNumberDensities(nucNames))
 
     def calcTotalParam(
@@ -2064,7 +2064,7 @@ class ArmiObject(metaclass=CompositeModelType):
     def getPuMass(self):
         """Get the mass of Pu in this object in grams."""
         nucs = []
-        for nucName in [nuc.name for nuc in elements.byZ[94].nuclideBases]:
+        for nucName in [nuc.name for nuc in elements.byZ[94].isotopes]:
             nucs.append(nucName)
         pu = self.getMass(nucs)
         return pu
@@ -2088,7 +2088,7 @@ class ArmiObject(metaclass=CompositeModelType):
     def getZrFrac(self):
         """return the total zr/(hm+zr) fraction in this assembly"""
         hm = self.getHMMass()
-        zrNucs = [nuc.name for nuc in elements.bySymbol["ZR"].nuclideBases]
+        zrNucs = [nuc.name for nuc in elements.bySymbol["ZR"].isotopes]
         zr = self.getMass(zrNucs)
         if hm + zr > 0:
             return zr / (hm + zr)
@@ -2134,7 +2134,7 @@ class ArmiObject(metaclass=CompositeModelType):
 
         ma_nuclides = iterables.flatten(
             [
-                ele.nuclideBases
+                ele.isotopes
                 for ele in [
                     elements.byZ[key] for key in elements.byZ.keys() if key > 94
                 ]

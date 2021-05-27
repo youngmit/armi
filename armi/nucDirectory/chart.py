@@ -15,11 +15,12 @@
 """
 Implementation of a chart of the nuclides class.
 """
-from typing import List
+from typing import List, Iterator
 import pathlib
 
+import numpy
+
 from armi import context
-from armi.nucDirectory import elements
 from armi.nucDirectory import nuclideBases
 from armi.utils.units import HEAVY_METAL_CUTOFF_Z
 
@@ -39,8 +40,9 @@ class Element:
     name : str
         element name
 
-    nuclideBases : list of nuclideBases
-        nuclideBases for this element
+    isotopes : list of Nuclides
+        Nuclides that make up the isotopes of this element. This includes a Nuclide that
+        represents the natural element itself, with an abundance of 0.0.
     """
 
     def __init__(self, z, symbol, name):
@@ -63,7 +65,7 @@ class Element:
         self.symbol = symbol
         self.name = name
         self.standardWeight = None
-        self.nuclideBases = []
+        self.isotopes = set()
 
     def __repr__(self):
         return "<Element {} {}>".format(self.symbol, self.z)
@@ -79,21 +81,17 @@ class Element:
         return hash(self.name)
 
     def __iter__(self):
-        for nuc in self.nuclideBases:
+        for nuc in self.isotopes:
             yield nuc
 
     def append(self, nuclide):
-        self.nuclideBases.append(nuclide)
+        self.isotopes.add(nuclide)
 
     def isNaturallyOccurring(self):
         r"""
-        Calculates the total natural abundance and if this value is zero returns False.
-        If any isotopes are naturally occurring the total abundance will be >0 so it will return True
+        Return true if any isotopes have a greater-than-zero natural abundance.
         """
-        totalAbundance = 0.0
-        for nuc in self.nuclideBases:
-            totalAbundance += nuc.abundance
-        return totalAbundance > 0.0
+        return any(nuc.abundance > 0 for nuc in self.isotopes)
 
     def getNaturalIsotopics(self):
         """
@@ -105,10 +103,21 @@ class Element:
         allow this method to be used in loops it will simply return an
         empty list in these situations.
         """
-        return [nuc for nuc in self.nuclideBases if nuc.abundance > 0.0 and nuc.a > 0]
+        return [nuc for nuc in self.isotopes if nuc.abundance > 0.0 and nuc.a > 0]
 
     def isHeavyMetal(self):
         return self.z > HEAVY_METAL_CUTOFF_Z
+
+    def updateWeight(self):
+        """
+        Re-compute the element's standard weight based on its isotopes.
+        """
+        totalAbundance = sum(nuc.abundance for nuc in self.isotopes)
+        if totalAbundance > 0.0:
+            self.standardWeight = (
+                sum(nuc.weight * nuc.abundance for nuc in self.isotopes)
+                / totalAbundance
+            )
 
 
 class ChartOfTheNuclides:
@@ -132,12 +141,152 @@ class ChartOfTheNuclides:
     nuclides altogether).
     """
 
-    def __init__(self, nuclides: List[nuclideBases.Nuclide]):
-        self.nuclides = []
-        self.elements = []
+    class Elements:
+        def __init__(self):
+            self.byZ = dict()
+            self.byName = dict()
+            self.bySymbol = dict()
+            self._elements = set()
 
-        # element collections
-        self.byZ
+            with open(pathlib.Path(context.RES) / "elements.dat", "r") as f:
+                for line in f:
+                    # read z, symbol, and name
+                    lineData = line.split()
+                    z = int(lineData[0])
+                    sym = lineData[1].upper()
+                    name = lineData[2].lower()
+                    self.add(Element(z, sym, name))
+
+        def __iter__(self) -> Iterator[Element]:
+            return iter(self._elements)
+
+        def add(self, element: Element):
+            self._elements.add(element)
+            self.byZ[element.z] = element
+            self.byName[element.name] = element
+            self.bySymbol[element.symbol] = element
+
+        def update(self, elements: List[Element]):
+            for element in elements:
+                self.add(element)
+
+        def setIsotopics(self, nuclides):
+            for nuc in nuclides:
+                self.byZ[nuc.z].append(nuc)
+
+        def clear(self):
+            self.byZ.clear()
+            self.byName.clear()
+            self.bySymbol.clear()
+            self._elements = set()
+
+    class Nuclides:
+        """
+        Rudimentary container for Nuclide instances
+
+        This is nested within the ``ChartOfTheNuclides`` class because of the
+        interrelated nature of Nuclides (their references to their Elements) and
+        Elements (with their references to isotope Nuclides).
+        """
+
+        def __init__(self):
+            self._nuclides = set()
+            self.byName = dict()
+            self.byDbName = dict()
+            self.byLabel = dict()
+
+        def __iter__(self):
+            return iter(self._nuclides)
+
+        def add(self, nuclide):
+            """
+            Insert a new Nuclide instance.
+
+            Raises ValueError if the nuclide already exists.
+            """
+            if nuclide in self._nuclides:
+                raise ValueError("Nuclide `{}` already in directory".format(nuclide))
+
+            self._nuclides.add(nuclide)
+            self.byName[nuclide.name] = nuclide
+            self.byDbName[nuclide.getDatabaseName] = nuclide
+            self.byLabel[nuclide.label] = nuclide
+
+        def update(self, other):
+            """
+            Fold entries from another set of Nuclides into this one.
+
+            Nuclide collisions between self and other will produce exceptions.
+            """
+            for nuclide in other:
+                self.add(other)
+
+        def where(self, predicate):
+            r"""Get all :py:class:`Nuclides <Nuclide>` matching a condition.
+
+            Returns an iterator of :py:class:`Nuclides <Nuclide>` matching the specified condition.
+
+            Attributes
+            ----------
+
+            predicate: lambda
+                A lambda, or function, accepting a :py:class:`Nuclide` as a parameter
+
+            Examples
+            --------
+
+            >>> from armi.nucDirectory import nuclideBases
+            >>> nucDir = nuclideBases.NuclideDirectory()
+            >>> ...
+            >>> [nn.name for nn in nucDir.where(lambda nb: 'Z' in nb.name)]
+            ['ZN64', 'ZN66', 'ZN67', 'ZN68', 'ZN70', 'ZR90', 'ZR91', 'ZR92', 'ZR94', 'ZR96', 'ZR93', 'ZR95', 'ZR']
+
+            >>> # in order to get length, convert to list
+            >>> isomers90 = list(nucDir.where(lambda nb: nb.a == 95))
+            >>> len(isomers90)
+            3
+            >>> for iso in isomers: print(iso)
+            <NuclideBase MO95: Z:42, A:95, S:0, label:MO2N, mc2id:MO95 5>
+            <NuclideBase NB95: Z:41, A:95, S:0, label:NB2N, mc2id:NB95 5>
+            <NuclideBase ZR95: Z:40, A:95, S:0, label:ZR2N, mc2id:ZR95 5>
+
+            """
+            for nuc in self._nuclides:
+                if predicate(nuc):
+                    yield (nuc)
+
+        def single(self, predicate):
+            r"""Get a single :py:class:`Nuclide` meeting the specified condition.
+
+            Similar to :py:func:`where`, this function uses a lambda input to filter
+            the :py:attr:`Nuclide instances <instances>`. If there is not 1 and only
+            1 match for the specified condition, an exception is raised.
+
+            Examples
+            --------
+
+            >>> from armi.nucDirectory import nuclideBases
+            >>> nucDir = nuclideBases.NuclideDirectory()
+            >>> ...
+            >>> nucDir.single(lambda nb: nb.name == 'C')
+            <NaturalNuclideBase C: Z:6, w:12.0107358968, label:C, mc2id:C    5>
+
+            >>> nucDir.single(lambda nb: nb.z == 95 and nb.a == 242 and nb.state == 1)
+            <NuclideBase AM242M: Z:95, A:242, S:1, label:AM4C, mc2id:AM242M>
+
+            """
+            matches = [nuc for nuc in self._nuclides if predicate(nuc)]
+            if len(matches) != 1:
+                raise ValueError(
+                    "Expected one nuclide matching the predicate, but got `{}`".format(
+                        matches
+                    )
+                )
+            return matches[0]
+
+    def __init__(self, nuclides: List[nuclideBases.Nuclide]):
+        self.nuclides = self.Nuclides()
+        self.elements = self.Elements()
 
         with open(pathlib.Path(context.RES) / "elements.dat", "r") as f:
             for line in f:
@@ -146,14 +295,38 @@ class ChartOfTheNuclides:
                 z = int(lineData[0])
                 sym = lineData[1].upper()
                 name = lineData[2].lower()
-                self.elements.append(Element(z, sym, name))
+                self.elements.add(Element(z, sym, name))
 
         for nuclide in nuclides:
-            self.nuclides.append(nuclide)
+            self.nuclides.add(nuclide)
 
-    def _buildElements(self):
+        # make sure that the elements have data consistent with their
+        # isotopes/abundances
+        self._connectElements()
+
+    def _connectElements(self) -> None:
+        for nuc in self.nuclides:
+            self.elements.byZ[nuc.z].append(nuc)
+
         for element in self.elements:
-            self
+            element.updateWeight()
 
-    def 
 
+def factory():
+    # pylint:disable=import-location
+    # import here, since we need to associate element's collections with ours, while
+    # elements is importing us for the actual definition of the Element class. Kind of
+    # bonkers, but elements still exists mostly to support old code that used to use the
+    # global collections.
+    #
+    # TODO consider moving the Element class defn back to elements. I think i only put
+    # it here because i was still working around elements being in charge of its
+    # collections.
+    from armi.nucDirectory import elements
+
+    global chart
+    chart = ChartOfTheNuclides([])
+
+    elements.byZ = chart.elements.byZ
+    elements.byName = chart.elements.byName
+    elements.bySymbol = chart.elements.bySymbol

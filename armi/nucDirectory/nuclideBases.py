@@ -97,7 +97,7 @@ U235_7
 
 import os
 import pathlib
-from typing import Optional
+from typing import Optional, Union
 import zlib
 
 import yaml
@@ -149,10 +149,6 @@ _riplEnvironVariable = "ARMI_RIPL_PATH"
 RIPL_PATH = None
 
 
-def isotopes(z):
-    return elements.byZ[z].nuclideBases
-
-
 def getIsotopics(nucName):
     """Expand elemental nuc name to isotopic nuc bases."""
     nb = byName[nucName]
@@ -193,7 +189,7 @@ def isMonoIsotopicElement(name):
     base = byName[name]
     return (
         base.abundance > 0
-        and len([e for e in base.element.nuclideBases if e.abundance > 0]) == 1
+        and len([e for e in base.element.isotopes if e.abundance > 0]) == 1
     )
 
 
@@ -283,7 +279,7 @@ def __readMc2Nuclides():
             if state == 0:
                 clide = [
                     nn
-                    for nn in element.nuclideBases
+                    for nn in element.isotopes
                     if nn.z == z and nn.a == a and nn.state == state
                 ]
                 if len(clide) > 1:
@@ -558,7 +554,7 @@ class Nuclide:
         state,
         weight,
         abundance,
-        name: Union[Auto, str]=Auto,
+        name: Union[Auto, str],
         label,
         mc2id,
     ):
@@ -579,7 +575,9 @@ class Nuclide:
         self.weight = weight
         self.abundance = abundance
         self.name = name if name is not Auto else self._createName(element, a, state)
-        self.label = label if label is not Auto else self._createLabel(element, a, state)
+        self.label = (
+            label if label is not Auto else self._createLabel(element, a, state)
+        )
         self.element = element
         self.mc2id = mc2id
         self.nuSF = 0.0
@@ -867,7 +865,16 @@ class DummyNuclideBase(Nuclide):
 
     def __init__(self, name, mc2id, weight):
         Nuclide.__init__(
-            self, None, 0, 0, 0, weight, 0.0, name, "DMP" + name[4], mc2id  # z  # a  # state
+            self,
+            None,
+            0,
+            0,
+            0,
+            weight,
+            0.0,
+            name,
+            "DMP" + name[4],
+            mc2id,  # z  # a  # state
         )
 
     def __repr__(self):
@@ -965,6 +972,7 @@ class NaturalNuclideBase(Nuclide):
         self.element = element
         Nuclide.__init__(
             self,
+            element,
             element.z,
             0,
             0,
@@ -1048,100 +1056,6 @@ class NaturalNuclideBase(Nuclide):
                 )
             )
         return "{0}".format(self.z * 100)
-
-
-class NuclideDirectory:
-    """
-    Essentially a portion of a chart of the nuclides.
-    """
-
-    def __init__(self):
-        self.instances = set()
-        self.byName = dict()
-        self.byDbName = dict()
-        self.byLabel = dict()
-
-    def add(self, nuclide):
-        """
-        Insert a new Nuclide instance.
-
-        Raises ValueError if the nuclide already exists.
-        """
-        if nuclide in self.instances:
-            raise ValueError("Nuclide `{}` already in directory".format(nuclide))
-
-        self.instances.add(other)
-        self.byName[nuclide.name] = nuclide
-        self.byDbName[nuclide.getDatabaseName] = nuclide
-        self.byLabel[nuclide.label] = nuclide
-
-    def update(self, other):
-        """
-        Fold entries from another NuclideDirectory into this one.
-
-        Nuclide collisions between self and other will produce exceptions.
-        """
-        for nuclide in other:
-            self.add(other)
-
-    def where(self, predicate):
-        r"""Get all :py:class:`Nuclides <Nuclide>` matching a condition.
-
-        Returns an iterator of :py:class:`Nuclides <Nuclide>` matching the specified condition.
-
-        Attributes
-        ----------
-
-        predicate: lambda
-            A lambda, or function, accepting a :py:class:`Nuclide` as a parameter
-
-        Examples
-        --------
-
-        >>> from armi.nucDirectory import nuclideBases
-        >>> nucDir = nuclideBases.NuclideDirectory()
-        >>> ...
-        >>> [nn.name for nn in nucDir.where(lambda nb: 'Z' in nb.name)]
-        ['ZN64', 'ZN66', 'ZN67', 'ZN68', 'ZN70', 'ZR90', 'ZR91', 'ZR92', 'ZR94', 'ZR96', 'ZR93', 'ZR95', 'ZR']
-
-        >>> # in order to get length, convert to list
-        >>> isomers90 = list(nucDir.where(lambda nb: nb.a == 95))
-        >>> len(isomers90)
-        3
-        >>> for iso in isomers: print(iso)
-        <NuclideBase MO95: Z:42, A:95, S:0, label:MO2N, mc2id:MO95 5>
-        <NuclideBase NB95: Z:41, A:95, S:0, label:NB2N, mc2id:NB95 5>
-        <NuclideBase ZR95: Z:40, A:95, S:0, label:ZR2N, mc2id:ZR95 5>
-
-        """
-        for nuc in self.instances:
-            if predicate(nuc):
-                yield (nuc)
-
-    def single(self, predicate):
-        r"""Get a single :py:class:`Nuclide` meeting the specified condition.
-
-        Similar to :py:func:`where`, this function uses a lambda input to filter
-        the :py:attr:`Nuclide instances <instances>`. If there is not 1 and only
-        1 match for the specified condition, an exception is raised.
-
-        Examples
-        --------
-
-        >>> from armi.nucDirectory import nuclideBases
-        >>> nucDir = nuclideBases.NuclideDirectory()
-        >>> ...
-        >>> nucDir.single(lambda nb: nb.name == 'C')
-        <NaturalNuclideBase C: Z:6, w:12.0107358968, label:C, mc2id:C    5>
-
-        >>> nucDir.single(lambda nb: nb.z == 95 and nb.a == 242 and nb.state == 1)
-        <NuclideBase AM242M: Z:95, A:242, S:1, label:AM4C, mc2id:AM242M>
-
-        """
-        matches = [nuc for nuc in self.instances if predicate(nuc)]
-        if len(matches) != 1:
-            raise errors.general_single_TooManyOrTooFewMatchesFor(matches)
-        return matches[0]
 
 
 def initReachableActiveNuclidesThroughBurnChain(numberDensityDict, activeNuclides):

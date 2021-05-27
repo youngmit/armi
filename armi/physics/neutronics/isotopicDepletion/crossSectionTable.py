@@ -27,7 +27,7 @@ from typing import List
 
 import numpy
 
-from armi.nucDirectory import nucDir
+from armi.nucDirectory import nuclideBases
 
 
 class CrossSectionTable(collections.OrderedDict):
@@ -78,7 +78,7 @@ class CrossSectionTable(collections.OrderedDict):
             rateType: xs
             for rateType, xs in zip(self.rateTypes, [nG, nF, n2n, nA, nP, n3n])
         }
-        nb = nucDir.nuclideBases.byName[nucName]
+        nb = nuclideBases.byName[nucName]
         mcnpNucName = int(nb.getMcnpId())
         self[mcnpNucName] = xsData
 

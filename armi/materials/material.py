@@ -241,7 +241,7 @@ class Material(composites.Leaf):
         molesPerCC = massDensities / atomicMasses  # item-wise division
 
         enrichedIndex = nucsNames.index(nuclideName)
-        isoAndEles = nuclideBases.byName[nuclideName].element.nuclideBases
+        isoAndEles = nuclideBases.byName[nuclideName].element.isotopes
         allIndicesUpdated = [
             nucsNames.index(nuc.name)
             for nuc in isoAndEles
@@ -249,9 +249,9 @@ class Material(composites.Leaf):
         ]
 
         if len(allIndicesUpdated) == 1:
-            if isinstance(
-                nuclideBases.byName[nuclideName], nuclideBases.NaturalNuclideBase
-            ) or nuclideBases.isMonoIsotopicElement(nuclideName):
+            if nuclideBases.byName[
+                nuclideName
+            ].isElemental() or nuclideBases.isMonoIsotopicElement(nuclideName):
                 # if there are not any other nuclides, assume we are enriching an entire element
                 # consequently, allIndicesUpdated is no longer the element's indices, but the materials indices
                 allIndicesUpdated = range(len(nucsNames))

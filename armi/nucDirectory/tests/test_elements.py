@@ -55,19 +55,6 @@ class TestElement(unittest.TestCase):
             with self.assertRaises(Exception):
                 elements.Element(ee.z, ee.symbol, ee.name)
 
-    def test_element_addedElementAppearsInElementList(self):
-        self.assertFalse("bacon" in elements.byName)
-        self.assertFalse(999 in elements.byZ)
-        self.assertFalse("BZ" in elements.bySymbol)
-        elements.Element(999, "BZ", "bacon")
-        self.assertTrue("bacon" in elements.byName)
-        self.assertTrue(999 in elements.byZ)
-        self.assertTrue("BZ" in elements.bySymbol)
-        # re-initialize the elements
-        with mockRunLogs.BufferLog():
-            elements.destroy()
-            elements.factory()
-
     def test_element_isNaturallyOccurring(self):
         """
         Test isNaturallyOccurring method by manually testing all elements.
@@ -86,7 +73,7 @@ class TestElement(unittest.TestCase):
         for ee in elements.byZ.values():
             if not ee.isNaturallyOccurring():
                 continue
-            totAbund = sum(iso.abundance for iso in ee.nuclideBases)
+            totAbund = sum(iso.abundance for iso in ee.isotopes)
             maxDeviationInRIPL = 0.000030021  # Ca sums to 1.0003002
             self.assertAlmostEqual(
                 totAbund,

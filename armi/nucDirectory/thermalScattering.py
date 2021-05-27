@@ -83,14 +83,14 @@ class ThermalScattering:
 
     def __init__(
         self,
-        nuclideBases: Union[nb.INuclide, Tuple[nb.INuclide]],
+        nuclideBases: Union[nb.Nuclide, Tuple[nb.Nuclide]],
         compoundName: str = None,
         endf8Label: str = None,
         aceLabel: str = None,
     ):
-        if isinstance(nuclideBases, nb.INuclide):
+        if isinstance(nuclideBases, nb.Nuclide):
             # handle common single entry for convenience
-            nuclideBases = [nuclideBases]
+            nuclideBases = (nuclideBases,)
         self.nbs = nuclideBases
         self.compoundName = compoundName
         self.endf8Label = endf8Label or self._genENDFB8Label()
@@ -107,7 +107,7 @@ class ThermalScattering:
         subjectNbs = []
         for nbi in self.nbs:
             if isinstance(nbi, nb.NaturalNuclideBase):
-                subjectNbs.extend(nbi.element.nuclideBases)
+                subjectNbs.extend(nbi.element.isotopes)
             else:
                 subjectNbs.append(nbi)
         return subjectNbs
@@ -139,7 +139,7 @@ class ThermalScattering:
         elif isinstance(first, nb.NaturalNuclideBase):
             # element in compound
             label = f"tsl-{first.element.symbol}in{self.compoundName}.endf"
-        elif isinstance(first, nb.NuclideBase):
+        elif isinstance(first, nb.Nuclide):
             # just isotope
             element = elements.byZ[first.z]
             label = (

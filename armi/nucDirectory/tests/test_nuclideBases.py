@@ -36,7 +36,7 @@ class TestNuclide(unittest.TestCase):
 
     def test_nucBase_AllAbundancesAddToOne(self):
         for zz in range(1, 102):
-            clides = nuclideBases.isotopes(zz)
+            clides = elements.byZ[zz].isotopes
             # We only process nuclides with measured masses. Some are purely theoretical, mostly over z=100
             self.assertTrue(
                 len(clides) > 0, msg="z={} unexpectedly has no nuclides".format(zz)
@@ -59,13 +59,12 @@ class TestNuclide(unittest.TestCase):
             labels.append(nn.label)
 
     def test_nucBases_NegativeZRaisesException(self):
-        for _ in range(0, 5):
-            with self.assertRaises(Exception):
-                nuclideBases.isotopes(random.randint(-1000, -1))
+        with self.assertRaises(KeyError):
+            elem = elements.byZ[-1]
 
     def test_nucBases_Z295RaisesException(self):
         with self.assertRaises(Exception):
-            nuclideBases.isotopes(295)
+            elem = elements.byZ[295]
 
     def test_nucBases_Mc2Elementals(self):
         notElemental = [
@@ -130,7 +129,7 @@ class TestNuclide(unittest.TestCase):
         ):
             numNaturals = len(list(nuc.getNaturalIsotopics()))
             self.assertGreaterEqual(
-                len(nuc.element.nuclideBases) - 1, numNaturals
+                len(nuc.element.isotopes) - 1, numNaturals
             )  # , nuc)
 
     def test_nucBases_singleFailsWithMultipleMatches(self):

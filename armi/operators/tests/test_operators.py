@@ -19,6 +19,7 @@ import os
 import unittest
 import subprocess
 
+import pytest
 import armi
 from armi import settings
 from armi.operators import OperatorMPI
@@ -115,7 +116,8 @@ if armi.MPI_SIZE > 1:
 
 
 if __name__ == "__main__":
-    args = ["mpiexec", "-n", "2", "python", "-m", "unittest"]
-    args += ["armi.tests.test_operators.OperatorTests"]
-    subprocess.call(args)
-    # unittest.main()
+    # args = ["mpiexec", "-n", "2", "python", "-m", "unittest"]
+    # args += ["armi.tests.test_operators.OperatorTests"]
+    # subprocess.call(args)
+    # # unittest.main()
+    pytest.main()
