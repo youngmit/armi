@@ -19,6 +19,7 @@ import collections
 
 from armi import interfaces
 from armi.nucDirectory import nuclideBases
+from armi.nucDirectory import elements
 from armi.nuclearDataIO import xsLibraries
 from armi.physics.neutronics.isotopicDepletion.crossSectionTable import (
     CrossSectionTable,
@@ -168,15 +169,22 @@ def makeXsecTable(
     for nucLabel, nuc in isotxs.items():
         if xsType != xsLibraries.getSuffixFromNuclideLabel(nucLabel):
             continue
+
         nucName = nuc.name
         nb = nuclideBases.byName[nucName]
+
         if isinstance(
-            nb, (nuclideBases.LumpNuclideBase, nuclideBases.DummyNuclideBase)
+            nb,
+            (
+                nuclideBases.LumpNuclideBase,
+                nuclideBases.DummyNuclideBase,
+                elements.Element,
+            ),
         ):
             continue
+
         microMultiGroupXS = isotxs[nucLabel].micros
-        if not isinstance(nb, nuclideBases.NaturalNuclideBase):
-            xsTable.addMultiGroupXS(nucName, microMultiGroupXS, mgFlux, totalFlux)
+        xsTable.addMultiGroupXS(nucName, microMultiGroupXS, mgFlux, totalFlux)
     return xsTable.getXsecTable(headerFormat=headerFormat, tableFormat=tableFormat)
 
 

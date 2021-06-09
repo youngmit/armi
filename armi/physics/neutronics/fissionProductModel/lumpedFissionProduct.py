@@ -25,15 +25,16 @@ import re
 
 from armi.utils import strings
 from armi.nucDirectory import nuclideBases
+from armi.nucDirectory import elements
 from armi import runLog
 from armi.utils import densityTools
 
-from armi.nucDirectory.elements import LANTHANIDE_ELEMENTS, GASEOUS_ELEMENTS
+from armi.nucDirectory.const import LANTHANIDE_ELEMENTS, GASEOUS_ELEMENTS
 
 from .fissionProductModelSettings import CONF_LFP_COMPOSITION_FILE_PATH
 
 
-class LumpedFissionProduct(object):
+class LumpedFissionProduct:
     r"""
     Lumped fission product.
 
@@ -657,7 +658,7 @@ def expandFissionProducts(massFrac, lumpedFissionProducts):
         nB = nuclideBases.byName[nucName]
         if isinstance(nB, nuclideBases.LumpNuclideBase):
             lfpNbs.append(nB)
-        elif isinstance(nB, nuclideBases.NaturalNuclideBase):
+        elif isinstance(nB, elements.Element):
             elementalNbs.append(nB)
         else:
             newMassFrac[nucName] = massFrac[nucName]

@@ -18,8 +18,6 @@ Implementation of a chart of the nuclides class.
 from typing import List, Iterator
 import pathlib
 
-import numpy
-
 from armi import context
 from armi.nucDirectory import nuclideBases
 from armi.utils.units import HEAVY_METAL_CUTOFF_Z
@@ -95,7 +93,7 @@ class Element:
 
     def getNaturalIsotopics(self):
         """
-        Return the nuclide bases of any naturally-occurring isotopes of this element.
+        Return the naturally-occurring isotopes of this element.
 
         Notes
         -----

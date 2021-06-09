@@ -46,7 +46,7 @@ from armi import runLog
 from armi import utils
 from armi.utils import units
 from armi.utils import densityTools
-from armi.nucDirectory import nucDir, nuclideBases
+from armi.nucDirectory import nucDir, nuclideBases, elements
 from armi.nucDirectory import elements
 from armi.localization import exceptions
 from armi.reactor import grids
@@ -930,14 +930,7 @@ class ArmiObject(metaclass=CompositeModelType):
                 convertedNucNames.append(nucName)
                 continue
             try:
-                # Need all nuclide bases, not just natural isotopics because, e.g. PU
-                # has no natural isotopics!
-                nucs = [
-                    nb.name
-                    for nb in elements.bySymbol[nucName].isotopes
-                    if not isinstance(nb, nuclideBases.NaturalNuclideBase)
-                ]
-                convertedNucNames.extend(nucs)
+                convertedNucNames.extend(elements.bySymbol[nucName].isotopes)
             except KeyError:
                 convertedNucNames.append(nucName)
 
@@ -2524,7 +2517,7 @@ class ArmiObject(metaclass=CompositeModelType):
     def expandAllElementalsToIsotopics(self):
         reactorNucs = self.getNuclides()
         for elemental in nuclideBases.where(
-            lambda nb: isinstance(nb, nuclideBases.NaturalNuclideBase)
+            lambda nb: isinstance(nb, elements.Element)
             and nb.name in reactorNucs
         ):
             self.expandElementalToIsotopics(elemental)

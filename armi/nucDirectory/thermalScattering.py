@@ -33,7 +33,7 @@ The labels for these vary across evaluations (e.g. ENDF/B-VII, ENDF/B-VIII, etc.
 ENDF/B-III.0 and ACE labels. Other physics kernels will have to derive their own labels
 as appropriate in client code.
 
-Like NuclideBase and Element, we want to have only one ThermalScattering instance
+Like Nuclide and Element, we want to have only one ThermalScattering instance
 for each TSL, so we use a module-level directory called ``byNbAndCompound``. This improves
 efficiency and allows better cross-referencing when thousands of material instances
 would otherwise have identical instances of these.
@@ -68,9 +68,9 @@ class ThermalScattering:
 
     Parameters
     ----------
-    nuclideBases : INuclide or tuple of INuclide
-        One or more nuclide bases whose existence would trigger the inclusion of the TSL.
-        Generally items here will be a NaturalNuclideBase like ``nb.byName["C"]`` for Carbon
+    nuclideBases : Nuclide or Element or tuple of the same
+        One or more nuclides whose existence would trigger the inclusion of the TSL.
+        Generally items here will be an Element like ``nb.byName["C"]`` for Carbon
         but it is a tuple to capture, e.g. the C and H in *methane*.
     compoundName : str, optional
         Label indicating what the subjects are in (e.g. ``"Graphite"`` or ``"H2O"``.
@@ -88,7 +88,7 @@ class ThermalScattering:
         endf8Label: str = None,
         aceLabel: str = None,
     ):
-        if isinstance(nuclideBases, nb.Nuclide):
+        if not isinstance(nuclideBases, tuple):
             # handle common single entry for convenience
             nuclideBases = (nuclideBases,)
         self.nbs = nuclideBases
@@ -100,14 +100,14 @@ class ThermalScattering:
         """
         Return all nuclide bases that could be subject to this law.
 
-        In cases where the law is defined by a NaturalNuclideBase, all potential
+        In cases where the law is defined by a Element, all potential
         isotopes of the element as well as the element it self should trigger it.
         This helps handle cases where, for example, C or C12 is present.
         """
         subjectNbs = []
         for nbi in self.nbs:
-            if isinstance(nbi, nb.NaturalNuclideBase):
-                subjectNbs.extend(nbi.element.isotopes)
+            if isinstance(nbi, elements.Element):
+                subjectNbs.extend(nbi.isotopes)
             else:
                 subjectNbs.append(nbi)
         return subjectNbs
@@ -124,9 +124,9 @@ class ThermalScattering:
 
         Unfortunately, the ace labels are not as easily derived.
 
-        * If nuclideBases is length one and contains a ``NaturalNuclideBase``, then the
+        * If nuclideBases is length one and contains an ``Element``, then the
           name will be assumed to be ``Element_in_compoundName``
-        * If nuclideBases is length one and is a NuclideBase, it is assumed to be an isotope
+        * If nuclideBases is length one and is a Nuclide, it is assumed to be an isotope
           like Fe-56 and  the label will be (for example) 026_Fe_056
         * If nuclideBases has length greater than one, the compoundName will form the
           entire of the label. So, if Si and O are in the bases, the compoundName must
@@ -136,7 +136,7 @@ class ThermalScattering:
         if len(self.nbs) > 1:
             # just compound (like SiO2)
             label = f"tsl-{self.compoundName}.endf"
-        elif isinstance(first, nb.NaturalNuclideBase):
+        elif isinstance(first, elements.Element):
             # element in compound
             label = f"tsl-{first.element.symbol}in{self.compoundName}.endf"
         elif isinstance(first, nb.Nuclide):
@@ -165,10 +165,10 @@ class ThermalScattering:
         if len(self.nbs) > 1:
             # just compound (like SiO2)
             label = f"{self.compoundName[:4].lower()}"
-        elif isinstance(first, nb.NaturalNuclideBase):
+        elif isinstance(first, elements.Element):
             # element in compound
-            label = f"{first.element.symbol.lower()}-{self.compoundName.lower()}"
-        elif isinstance(first, nb.NuclideBase):
+            label = f"{first.symbol.lower()}-{self.compoundName.lower()}"
+        elif isinstance(first, nb.Nuclide):
             # just isotope
             element = elements.byZ[first.z]
             label = f"{element.symbol.lower()}-{first.a:d}"
@@ -191,7 +191,6 @@ def factory():
     --------
     armi.nucDirectory.nuclideBases.factory
         Calls this during ARMI initialization.
-
 
     .. warning::
         This gets called automatically during init, so don't call it

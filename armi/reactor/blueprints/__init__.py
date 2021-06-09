@@ -362,9 +362,8 @@ class Blueprints(yamlize.Object, metaclass=_BlueprintsPluginCollector):
         # Flag all elementals for expansion unless they've been flagged otherwise by
         # user input or automatic lattice/datalib rules.
         for elemental in nuclideBases.instances:
-            if not isinstance(elemental, nuclideBases.NaturalNuclideBase):
-                # `elemental` may be a NaturalNuclideBase or a NuclideBase
-                # skip all NuclideBases
+            if not isinstance(elemental, elements.Element):
+                # `elemental` may be an Element or a Nuclide; skip all Nuclide
                 continue
 
             if elemental in elementalsToKeep:
@@ -384,7 +383,7 @@ class Blueprints(yamlize.Object, metaclass=_BlueprintsPluginCollector):
                 # must be declared up front.
                 continue
 
-            self.elementsToExpand.append(elemental.element)
+            self.elementsToExpand.append(elemental)
 
             if (
                 elemental.name in self.nuclideFlags
@@ -393,11 +392,11 @@ class Blueprints(yamlize.Object, metaclass=_BlueprintsPluginCollector):
                 # user-input has precedence
                 newNuclides = [
                     nuclideBases.byName[nn]
-                    for nn in self.nuclideFlags[elemental.element.symbol].expandTo
+                    for nn in self.nuclideFlags[elemental.symbol].expandTo
                 ]
             elif (
                 elemental in expansions
-                and elemental.element.symbol in self.nuclideFlags
+                and elemental.symbol in self.nuclideFlags
             ):
                 # code-specific expansion required
                 newNuclides = expansions[elemental]
@@ -410,12 +409,12 @@ class Blueprints(yamlize.Object, metaclass=_BlueprintsPluginCollector):
                 # This must be updated because the operative expansion code just uses the flags
                 #
                 # Also, if this element is not in nuclideFlags at all, we just don't add it
-                self.nuclideFlags[elemental.element.symbol].expandTo = [
+                self.nuclideFlags[elemental.symbol].expandTo = [
                     nb.name for nb in newNuclides
                 ]
             else:
                 # expand to all possible natural isotopics
-                newNuclides = elemental.element.getNaturalIsotopics()
+                newNuclides = elemental.getNaturalIsotopics()
 
             for nb in newNuclides:
                 currentSet.add(nb.name)

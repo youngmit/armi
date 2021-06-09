@@ -30,6 +30,13 @@ from armi.nucDirectory import nuclideBases
 from armi.utils import densityTools
 from armi.localization.exceptions import InputError
 
+# TODO: This is trying to get stuff out of nuclideBases at import time, which can be
+# problematic. Ideally we would be accessing these keys() at runtime. However,
+# pre-computing this set is potentially important from a performance perspective. We
+# should consider measuring to be sure and replacing this with a function, or replacing
+# with some sort of lazily-evaluated thing that binds to a value on first access. Pretty
+# easy to make a little class that on its first call to __contains__ replaces itself
+# with a set.
 ALLOWED_KEYS = set(nuclideBases.byName.keys()) | set(elements.bySymbol.keys())
 
 
@@ -106,9 +113,8 @@ class NuclideFlag(yamlize.Object):
         """
         Given a nuclide or element name, file it as either active or inert.
 
-        If isotopic expansions are requested, include the isotopics
-        rather than the NaturalNuclideBase, as the NaturalNuclideBase will never
-        occur in such a problem.
+        If isotopic expansions are requested, include the isotopics rather than the
+        Element, as the Element will never occur in such a problem.
         """
         nb = nuclideBases.byName[self.nuclideName]
         if self.expandTo:
@@ -461,7 +467,7 @@ def autoSelectElementsToKeepFromSettings(cs):
     Returns
     -------
     elementalsToKeep : set
-        Set of NaturalNuclideBase instances to not expand into
+        Set of Element instances to not expand into
         natural isotopics.
     expansions : dict
         Element to list of nuclides for expansion.
@@ -486,7 +492,7 @@ def autoSelectElementsToKeepFromSettings(cs):
     mcnpExpansions = {"O": ["O16"]}
 
     for element in elements.byName.values():
-        # any NaturalNuclideBase that's available in MC2 libs
+        # any Element that's available in MC2 libs
         nnb = nuclideBases.byName.get(element.symbol)
         if nnb and nnb.mc2id:
             elementalsInMC2.add(nnb)
@@ -531,7 +537,7 @@ def autoSelectElementsToKeepFromSettings(cs):
             )
 
     elif cs["xsKernel"] == "MC2v2":
-        # strip out any NaturalNuclideBase with no mc2id (not on mc2Nuclides.yaml)
+        # strip out any Element with no mc2id (not on mc2Nuclides.yaml)
         elementalsToKeep.update(elementalsInMC2)
         expansionStrings.update(mc2Expansions)
 
